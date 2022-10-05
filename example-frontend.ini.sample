@@ -1,0 +1,9 @@
+[example-frontend]
+clientID = example-frontend
+clientSecret = secret
+providerUrl = https://example.test/keycloak/realms/golang-oidc
+redirectCallbackUrl = https://example.test/example-frontend/auth/oidc/callback
+redirectLoginUrl = https://example.test/example-frontend/
+backendServiceUrl = https://example.test/example-backend/
+resourceServiceUrl = https://example.test/example-resource/
+listenAddress = 0.0.0.0:80

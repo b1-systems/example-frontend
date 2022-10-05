@@ -1,0 +1,7 @@
+[Unit]
+Description=Example Golang OIDC App (Frontend)
+[Service]
+Type=simple
+ExecStart=/usr/local/example-frontend/example-frontend
+[Install]
+WantedBy=multi-user.target
