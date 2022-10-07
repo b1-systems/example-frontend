@@ -1,7 +1,7 @@
 /* 1. Demonstration of the OAuth2 Authorization Code Grant
       See also: https://oauth.net/2/grant-types/authorization-code/
    2. Demonstration of "state" parameter to authentication code request and authorization response
-      See also: https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes 
+      See also: https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes
    3. Demonstration of "nonce" parameter to authentication code request and ID token claim
       See also: https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes
    4. Demonstration of "code_challenge" parameter to authentication code request,
@@ -270,17 +270,16 @@ func main() {
             log.Printf("Unable to parse claims from ID token: %s", err)
             http.Error(w, "Bad request", http.StatusBadRequest)
           } else {
-            w.Write([]byte(fmt.Sprintf("Client %s got access token: %s\r\n", clientID, access_token)))
-            w.Write([]byte(fmt.Sprintf("Client %s got ID token: %s\r\n", clientID, id_token)))
+            w.Write([]byte(fmt.Sprintf("Client %s got access token: %s\r\n\r\n", clientID, access_token)))
+            w.Write([]byte(fmt.Sprintf("Client %s got ID token: %s\r\n\r\n", clientID, id_token)))
             w.Write([]byte(fmt.Sprintf(
-              "Client %s parsed claims: exp = %s, aud = %s, email = %s, email_verified = %t\r\n",
+              "--------%s--------\r\n" +
+              "Parsed claims: exp = %s, aud = %s, email = %s, email_verified = %t\r\n\r\n",
               clientID,
               time.Unix(claims.Expires, 0).UTC(),
               claims.Audience,
               claims.Email,
               claims.Verified)))
-
-            w.Write([]byte("Making web request to " + backendServiceUrl + "\r\n"))
 
             req, err := http.NewRequest("GET", backendServiceUrl, nil)
 
@@ -306,8 +305,6 @@ func main() {
                 w.Write([]byte("Result of web request to " + backendServiceUrl + ":\r\n" + sb + "\r\n"))
               }
             }
-
-            w.Write([]byte("Making web request to " + resourceServiceUrl + "\r\n"))
 
             req, err = http.NewRequest("GET", resourceServiceUrl, nil)
 
