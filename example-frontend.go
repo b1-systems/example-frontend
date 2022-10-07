@@ -168,19 +168,7 @@ func PkceChallenge(verifier string) string {
   return (challenge)
 }
 
-func setCookie(w http.ResponseWriter, r *http.Request, name, value string) {
-  c := &http.Cookie{
-    Name: name,
-    Value: value,
-    MaxAge: int(time.Hour.Seconds()),
-    Secure: r.TLS != nil,
-    HttpOnly: true,
-  }
-
-  http.SetCookie(w, c)
-}
-
-func redirectToLogin(config oauth2.Config, w http.ResponseWriter, r *http.Request) {
+func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseWriter, r *http.Request) {
   state, err := randString(16)
 
   if err != nil {
@@ -203,9 +191,9 @@ func redirectToLogin(config oauth2.Config, w http.ResponseWriter, r *http.Reques
 
       codeChallenge := PkceChallenge(codeVerifier)
 
-      setCookie(w, r, "state", state)
-      setCookie(w, r, "nonce", nonce)
-      setCookie(w, r, "codeVerifier", codeVerifier)
+      s.Set("state", state)
+      s.Set("nonce", nonce)
+      s.Set("codeVerifier", codeVerifier)
 
       url := config.AuthCodeURL(
         state,
@@ -252,7 +240,7 @@ func main() {
     s := sess.Start(w, r);
 
     if auth, _ := s.GetBoolean("authenticated"); !auth {
-      redirectToLogin(config, w, r);
+      redirectToLogin(config, s, w, r);
     } else {
       access_token := s.GetString("access_token")
 
@@ -262,7 +250,7 @@ func main() {
       if err != nil {
         s.Set("authenticated", false)
         log.Printf("Unable to verify ID token: %s; redirecting user agent to login", err)
-        redirectToLogin(config, w, r);
+        redirectToLogin(config, s, w, r);
       } else {
         err = idToken.VerifyAccessToken(access_token)
 
@@ -350,24 +338,20 @@ func main() {
   })
 
   http.HandleFunc("/auth/oidc/callback", func(w http.ResponseWriter, r *http.Request) {
-    state, err := r.Cookie("state")
+    s := sess.Start(w, r);
 
-    if err != nil {
-      log.Printf("Cookie \"state\" not set, possible clickjack attempt")
+    state := s.GetString("state")
+
+    if r.URL.Query().Get("state") != state {
+      log.Printf("\"state\" did not match, possible clickjack attempt")
       http.Error(w, "Bad request", http.StatusBadRequest)
       return
     }
 
-    if r.URL.Query().Get("state") != state.Value {
-      log.Printf("Cookie \"state\" did not match, possible clickjack attempt")
-      http.Error(w, "Bad request", http.StatusBadRequest)
-      return
-    }
-
-    codeVerifier, err := r.Cookie("codeVerifier")
+    codeVerifier := s.GetString("codeVerifier")
 
     if err != nil {
-      log.Printf("Cookie \"codeVerifier\" not set, possible clickjack attempt")
+      log.Printf("\"codeVerifier\" not set, possible clickjack attempt")
       http.Error(w, "Bad request", http.StatusBadRequest)
       return
     }
@@ -375,7 +359,7 @@ func main() {
     oauth2Token, err := config.Exchange(
       ctx,
       r.URL.Query().Get("code"),
-      oauth2.SetAuthURLParam("code_verifier", codeVerifier.Value))
+      oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 
     if err != nil {
       log.Printf("Failed to exchange token: %s", err.Error())
@@ -399,21 +383,13 @@ func main() {
       return
     }
 
-    nonce, err := r.Cookie("nonce")
+    nonce := s.GetString("nonce")
 
-    if err != nil {
-      log.Printf("Cookie \"nonce\" not set, possible clickjack attempt")
+    if idToken.Nonce != nonce {
+      log.Printf("\"nonce\" did not match, possible clickjack attempt")
       http.Error(w, "Bad request", http.StatusBadRequest)
       return
     }
-
-    if idToken.Nonce != nonce.Value {
-      log.Printf("Cookie \"nonce\" did not match, possible clickjack attempt")
-      http.Error(w, "Bad request", http.StatusBadRequest)
-      return
-    }
-
-    s := sess.Start(w, r);
 
     s.Set("authenticated", true)
     s.Set("access_token", oauth2Token.AccessToken);
