@@ -1,7 +1,19 @@
+/* 1. Demonstration of the OAuth2 Authorization Code Grant
+      See also: https://oauth.net/2/grant-types/authorization-code/
+   2. Demonstration of "state" parameter to authentication code request and authorization response
+      See also: https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes 
+   3. Demonstration of "nonce" parameter to authentication code request and ID token claim
+      See also: https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes
+   4. Demonstration of "code_challenge" parameter to authentication code request,
+      "code_verifier" parameter to token exchange (Proof Key for Code Exchange, PKCE)
+      See also: https://oauth.net/2/pkce/
+      See also (code example): https://github.com/zjutjh/User-Center/blob/main/test/test_client.go */
+
 package main
 
 import (
   "crypto/rand"
+  "crypto/sha256"
   "encoding/base64"
   "fmt"
   "io"
@@ -132,6 +144,30 @@ func randString(nByte int) (string, error) {
   return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
+func GenerateCodeVerifier(length int) (string, error) {
+  if length > 128 {
+    length = 128
+  } else if length < 43 {
+    length = 43
+  }
+
+  result, err := randString(length)
+
+  if err != nil {
+    log.Printf("Could not generate random string of length %d for PKCE code verifier")
+    return result, err
+  }
+
+  return result, nil
+}
+
+func PkceChallenge(verifier string) string {
+  sum := sha256.Sum256([]byte(verifier))
+  challenge := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(sum[:])
+
+  return (challenge)
+}
+
 func setCookie(w http.ResponseWriter, r *http.Request, name, value string) {
   c := &http.Cookie{
     Name: name,
@@ -157,10 +193,27 @@ func redirectToLogin(config oauth2.Config, w http.ResponseWriter, r *http.Reques
       log.Fatal(err)
       http.Error(w, "Internal error", http.StatusInternalServerError)
     } else {
+      codeVerifier, err := GenerateCodeVerifier(43)
+
+      if err != nil {
+        log.Fatal(err)
+        http.Error(w, "Internal error", http.StatusInternalServerError)
+        return
+      }
+
+      codeChallenge := PkceChallenge(codeVerifier)
+
       setCookie(w, r, "state", state)
       setCookie(w, r, "nonce", nonce)
+      setCookie(w, r, "codeVerifier", codeVerifier)
 
-      http.Redirect(w, r, config.AuthCodeURL(state, oidc.Nonce(nonce)), http.StatusFound)
+      url := config.AuthCodeURL(
+        state,
+        oidc.Nonce(nonce),
+        oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+        oauth2.SetAuthURLParam("code_challenge", codeChallenge))
+
+      http.Redirect(w, r, url, http.StatusFound)
     }
   }
 }
@@ -187,7 +240,7 @@ func main() {
     ClientSecret: clientSecret,
     Endpoint: provider.Endpoint(),
     RedirectURL: redirectCallbackUrl,
-    Scopes: []string{oidc.ScopeOpenID, "profile", "email"},
+    Scopes: []string{oidc.ScopeOpenID, "profile", "email", "roles"},
   }
 
   sess := sessions.New(sessions.Config{
@@ -229,6 +282,8 @@ func main() {
             log.Printf("Unable to parse claims from ID token: %s", err)
             http.Error(w, "Bad request", http.StatusBadRequest)
           } else {
+            w.Write([]byte(fmt.Sprintf("Client %s got access token: %s\r\n", clientID, access_token)))
+            w.Write([]byte(fmt.Sprintf("Client %s got ID token: %s\r\n", clientID, id_token)))
             w.Write([]byte(fmt.Sprintf(
               "Client %s parsed claims: exp = %s, aud = %s, email = %s, email_verified = %t\r\n",
               clientID,
@@ -309,7 +364,18 @@ func main() {
       return
     }
 
-    oauth2Token, err := config.Exchange(ctx, r.URL.Query().Get("code"))
+    codeVerifier, err := r.Cookie("codeVerifier")
+
+    if err != nil {
+      log.Printf("Cookie \"codeVerifier\" not set, possible clickjack attempt")
+      http.Error(w, "Bad request", http.StatusBadRequest)
+      return
+    }
+
+    oauth2Token, err := config.Exchange(
+      ctx,
+      r.URL.Query().Get("code"),
+      oauth2.SetAuthURLParam("code_verifier", codeVerifier.Value))
 
     if err != nil {
       log.Printf("Failed to exchange token: %s", err.Error())
