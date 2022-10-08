@@ -128,7 +128,7 @@ func GenerateCodeVerifier(length int) (string, error) {
   return result, nil
 }
 
-func PkceChallenge(verifier string) string {
+func ComputePkceChallenge(verifier string) string {
   sum := sha256.Sum256([]byte(verifier))
   challenge := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(sum[:])
 
@@ -156,7 +156,7 @@ func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseW
         return
       }
 
-      codeChallenge := PkceChallenge(codeVerifier)
+      codeChallenge := ComputePkceChallenge(codeVerifier)
 
       s.Set("state", state)
       s.Set("nonce", nonce)
