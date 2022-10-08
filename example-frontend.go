@@ -15,20 +15,18 @@ import (
   "crypto/rand"
   "crypto/sha256"
   "encoding/base64"
-  "errors"
   "fmt"
   "io"
   "io/ioutil"
   "log"
   "net/http"
   "os"
-  "path/filepath"
   "time"
   "github.com/coreos/go-oidc/v3/oidc"
   "github.com/kataras/go-sessions/v3"
   "golang.org/x/net/context"
   "golang.org/x/oauth2"
-  "gopkg.in/ini.v1"
+  "example-frontend/ini"
 )
 
 var (
@@ -42,64 +40,6 @@ var (
   resourceServiceUrl = ""
   listenAddress = ""
 )
-
-type ref struct {
-  name string
-  value *string
-}
-
-func (r ref) readValue(cs *ini.Section) error {
-  *r.value = cs.Key(r.name).String()
-
-  if *r.value == "" {
-    return errors.New(fmt.Sprintf("No value for name %s", r.name))
-  } else {
-    return nil
-  }
-}
-
-func readIni() {
-  ex, err := os.Executable()
-
-  if err != nil {
-    panic(err)
-  }
-
-  cfg, err := ini.Load(filepath.Join(filepath.Dir(ex), clientName + ".ini"))
-
-  if err != nil {
-    panic(err)
-  }
-
-  cs := cfg.Section(clientName)
-
-  arr := [...]ref{
-    {"clientID", &clientID},
-    {"clientSecret", &clientSecret},
-    {"providerUrl", &providerUrl},
-    {"redirectCallbackUrl", &redirectCallbackUrl},
-    {"redirectLoginUrl", &redirectLoginUrl},
-    {"backendServiceUrl", &backendServiceUrl},
-    {"resourceServiceUrl", &resourceServiceUrl},
-    {"listenAddress", &listenAddress}}
-
-  for _, r := range arr {
-    if err := r.readValue(cs) ; err != nil {
-      log.Fatal(fmt.Sprintf("Could not read value of %s", r.name))
-      os.Exit(1)
-    } else {
-      var value string
-
-      if r.name == "clientSecret" {
-        value = "*REDACTED*"
-      } else {
-        value = *r.value
-      }
-
-      log.Printf("%s = %s\n", r.name, value);
-    }
-  }
-}
 
 func randString(nByte int) (string, error) {
   b := make([]byte, nByte)
@@ -174,7 +114,17 @@ func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseW
 }
 
 func main() {
-  readIni()
+  arr := []ini.Ref{
+    {"clientID", &clientID},
+    {"clientSecret", &clientSecret},
+    {"providerUrl", &providerUrl},
+    {"redirectCallbackUrl", &redirectCallbackUrl},
+    {"redirectLoginUrl", &redirectLoginUrl},
+    {"backendServiceUrl", &backendServiceUrl},
+    {"resourceServiceUrl", &resourceServiceUrl},
+    {"listenAddress", &listenAddress}}
+
+  ini.ReadIni(clientName, arr)
 
   ctx := context.Background()
   provider, err := oidc.NewProvider(ctx, providerUrl)
