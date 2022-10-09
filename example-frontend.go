@@ -7,7 +7,9 @@
    4. Demonstration of "code_challenge" parameter to authentication code request and
       "code_verifier" parameter to token exchange (Proof Key for Code Exchange, PKCE)
       See also: https://oauth.net/2/pkce/
-      See also (code example): https://github.com/zjutjh/User-Center/blob/main/test/test_client.go */
+      See also (code example): https://github.com/zjutjh/User-Center/blob/main/test/test_client.go
+   5. Demonstration of OpenID Connect Back-Channel Logout 1.0
+      See also: https://openid.net/specs/openid-connect-backchannel-1_0.html */
 
 package main
 
@@ -134,11 +136,20 @@ func main() {
     os.Exit(1)
   }
 
-  oidcConfig := &oidc.Config{
+  idTokenVerifyerConfig := &oidc.Config{
     ClientID: clientID,
   }
 
-  verifier := provider.Verifier(oidcConfig)
+  idTokenVerifier := provider.Verifier(idTokenVerifyerConfig)
+
+  logoutTokenVerifyerConfig := &oidc.Config{
+    ClientID: clientID,
+    SkipExpiryCheck: true,
+  }
+
+  logoutTokenVerifier := provider.Verifier(logoutTokenVerifyerConfig)
+
+  oidc_sid_to_session := make(map[string]string)
 
   config := oauth2.Config{
     ClientID: clientID,
@@ -154,7 +165,7 @@ func main() {
   })
 
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-    s := sess.Start(w, r);
+    s := sess.Start(w, r)
 
     if auth, _ := s.GetBoolean("authenticated"); !auth {
       redirectToLogin(config, s, w, r);
@@ -162,7 +173,7 @@ func main() {
       access_token := s.GetString("access_token")
 
       id_token := s.GetString("id_token")
-      idToken, err := verifier.Verify(ctx, id_token)
+      idToken, err := idTokenVerifier.Verify(ctx, id_token)
 
       if err != nil {
         s.Set("authenticated", false)
@@ -177,6 +188,7 @@ func main() {
           http.Error(w, "Bad request", http.StatusBadRequest)
         } else {
           var claims struct {
+            Sid string `json:"sid"`
             Expires int64 `json:"exp"`
             Audience []string `json:"aud"`
             Email string `json:"email"`
@@ -191,12 +203,21 @@ func main() {
             w.Write([]byte(fmt.Sprintf("Client %s got ID token: %s\r\n\r\n", clientID, id_token)))
             w.Write([]byte(fmt.Sprintf(
               "--------%s--------\r\n" +
-              "Parsed claims: exp = %s, aud = %s, email = %s, email_verified = %t\r\n\r\n",
+              "Parsed claims:\r\n" +
+              " * sid = %s\r\n" +
+              " * exp = %s\r\n" +
+              " * aud = %s\r\n" +
+              " * email = %s\r\n" +
+              " * email_verified = %t\r\n\r\n",
               clientID,
+              claims.Sid,
               time.Unix(claims.Expires, 0).UTC(),
               claims.Audience,
               claims.Email,
               claims.Verified)))
+
+            // Remember OIDC session ID -> Kataras session ID
+            oidc_sid_to_session[claims.Sid] = s.ID()
 
             req, err := http.NewRequest("GET", backendServiceUrl, nil)
 
@@ -252,7 +273,7 @@ func main() {
   })
 
   http.HandleFunc("/auth/oidc/callback", func(w http.ResponseWriter, r *http.Request) {
-    s := sess.Start(w, r);
+    s := sess.Start(w, r)
 
     state := s.GetString("state")
 
@@ -289,7 +310,7 @@ func main() {
       return
     }
 
-    idToken, err := verifier.Verify(ctx, rawIDToken)
+    idToken, err := idTokenVerifier.Verify(ctx, rawIDToken)
 
     if err != nil {
       log.Printf("Failed to verify ID Token: %s", err.Error())
@@ -310,6 +331,36 @@ func main() {
     s.Set("id_token", rawIDToken);
 
     http.Redirect(w, r, redirectLoginUrl, http.StatusFound)
+  })
+
+  http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+    r.ParseForm()
+    logout_token := r.Form.Get("logout_token")
+
+    log.Printf("The /logout handler was called; logout_token = %s", string(logout_token))
+
+    if logoutToken, err := logoutTokenVerifier.Verify(ctx, logout_token) ; err != nil {
+      log.Printf("logout_token could not be verified: %s", err)
+      http.Error(w, "Bad request", http.StatusBadRequest)
+    } else {
+      var claims struct {
+        Sid string `json:"sid"`
+      }
+
+      if err := logoutToken.Claims(&claims); err != nil {
+        log.Printf("Unable to parse claims from ID token: %s", err)
+        http.Error(w, "Bad request", http.StatusBadRequest)
+      } else {
+        log.Printf("Received backchannel logout request for sid = %s", claims.Sid)
+
+        if session_id, ok := oidc_sid_to_session[claims.Sid] ; ok {
+          sess.DestroyByID(session_id)
+          log.Printf("Requested destruction of browser session %s (OIDC sid=%s)", session_id, claims.Sid)
+        } else {
+          log.Printf("No browser session found for sid = %s", claims.Sid)
+        }
+      }
+    }
   })
 
   log.Printf("Listening on http://%s/", listenAddress)
