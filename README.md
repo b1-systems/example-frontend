@@ -47,3 +47,10 @@ resourceServiceUrl = https://tk-sls.de/example-resource/
 listenAddress = 0.0.0.0:80
 ```
 
+# Start
+
+```bash
+systemctl start example-frontend.service
+journalctl -xefu  example-frontend.service
+```
+
