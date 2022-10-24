@@ -109,6 +109,8 @@ func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseW
         oidc.Nonce(nonce),
         oauth2.SetAuthURLParam("code_challenge_method", "S256"),
         oauth2.SetAuthURLParam("code_challenge", codeChallenge))
+        oauth2.SetAuthURLParam("claims", "{\"id_token\":{\"acr\":{\"essential\": true,\"values\": [\"gold\"]}}}")
+        oauth2.SetAuthURLParam("test", "xyz")
 
       http.Redirect(w, r, url, http.StatusFound)
     }
@@ -203,7 +205,7 @@ func main() {
             w.Write([]byte(fmt.Sprintf("Client %s got ID token: %s\r\n\r\n", clientID, id_token)))
             w.Write([]byte(fmt.Sprintf(
               "--------%s--------\r\n" +
-              "Parsed claims:\r\n" +
+              "Parsed claims (from ID token):\r\n" +
               " * sid = %s\r\n" +
               " * exp = %s\r\n" +
               " * aud = %s\r\n" +
