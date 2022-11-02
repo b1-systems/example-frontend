@@ -18,7 +18,7 @@
 ## Installation
 
 ```bash
-git clone https://tk-sls.de/gitlab/golang-oidc/example-frontend.git
+git clone https://github.com/b1-systems/example-frontend.git
 cd example-frontend
 go mod tidy
 go build
@@ -52,11 +52,11 @@ redirectCallbackUrl = https://your_frontend_url/auth/oidc/callback
 # This should be the URL of the URI "/" of your "example-frontend" server:
 redirectLoginUrl = https://your_frontend_url/example-frontend/
 
-# See https://tk-sls.de/gitlab/golang-oidc/example-frontend
-backendServiceUrl = https://tk-sls.de/example-backend/
+# See https://github.com/b1-systems/example-frontend
+backendServiceUrl = https://www.example.test/example-backend/
 
-# See https://tk-sls.de/gitlab/golang-oidc/example-resource
-resourceServiceUrl = https://tk-sls.de/example-resource/
+# See https://github.com/b1-systems/example-resource
+resourceServiceUrl = https://www.example.test/example-resource/
 
 # Plain HTTP service address of this "example-frontend" server:
 listenAddress = 0.0.0.0:80
