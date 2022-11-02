@@ -1,3 +1,9 @@
+/* author: B1 Systems GmbH
+ * authoremail: info@b1-systems.de
+ * license: MIT License <https://opensource.org/licenses/MIT>
+ * summary: OpenID Connect example
+ * */
+
 /* 1. Demonstration of OAuth2 Authorization Code Grant
       See also: https://oauth.net/2/grant-types/authorization-code/
    2. Demonstration of "state" parameter to authentication code request and authorization response
