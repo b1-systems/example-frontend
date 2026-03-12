@@ -35,6 +35,7 @@ import (
   "golang.org/x/net/context"
   "golang.org/x/oauth2"
   "example-frontend/ini"
+  "example-frontend/secret"
 )
 
 var (
@@ -69,7 +70,7 @@ func GenerateCodeVerifier(length int) (string, error) {
   result, err := randString(length)
 
   if err != nil {
-    log.Printf("Could not generate random string of length %d for PKCE code verifier")
+    log.Printf("Could not generate random string of length %d for PKCE code verifier", length)
     return result, err
   }
 
@@ -125,16 +126,22 @@ func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseW
 
 func main() {
   arr := []ini.Ref{
-    {"clientID", &clientID},
-    {"clientSecret", &clientSecret},
-    {"providerUrl", &providerUrl},
-    {"redirectCallbackUrl", &redirectCallbackUrl},
-    {"redirectLoginUrl", &redirectLoginUrl},
-    {"backendServiceUrl", &backendServiceUrl},
-    {"resourceServiceUrl", &resourceServiceUrl},
-    {"listenAddress", &listenAddress}}
+	{Name: "clientID", Value: &clientID},
+    {Name: "clientSecret", Value: &clientSecret},
+    {Name: "providerUrl", Value: &providerUrl},
+    {Name: "redirectCallbackUrl", Value: &redirectCallbackUrl},
+    {Name: "redirectLoginUrl", Value: &redirectLoginUrl},
+    {Name: "backendServiceUrl", Value: &backendServiceUrl},
+    {Name: "resourceServiceUrl", Value: &resourceServiceUrl},
+    {Name: "listenAddress", Value: &listenAddress}}
 
   ini.ReadIni(clientName, arr)
+
+  content, err := secret.ReadSecret("clientSecret")
+
+  if err == nil {
+	  clientSecret = content
+  }
 
   ctx := context.Background()
   provider, err := oidc.NewProvider(ctx, providerUrl)
