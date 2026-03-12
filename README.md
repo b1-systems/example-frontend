@@ -62,7 +62,7 @@ resourceServiceUrl = https://www.example.test/example-resource/
 listenAddress = 0.0.0.0:80
 ```
 
-### Environemnt Variables
+### Environment Variables
 
 All configuration options can also be set using environment variables as show below.
 Note that setting an environment variable overrides the corresponding value in the
@@ -70,13 +70,13 @@ configuration file.
 
 ```
 CLIENT_ID=some-name \
-CLIENT_SECRET=somesecret123 \
-PROVIDER_URL=https://some.provider/url \
-REDIRECT_CALLBACK_URL=https://your.callback/url \
+CLIENT_SECRET=secret_as_set_in_idp \
+PROVIDER_URL=https://your_idp_url/realms/golang-oidc \
+REDIRECT_CALLBACK_URL=https://your_frontend_url/auth/oidc/callback \
 REDIRECT_LOGIN_URL=https://your.login/url \
-BACKEND_SERVICE_URL=https://some.service/url \
-RESOURCE_SERVICE_URL=https://some.other.service/url \
-LISTEN_ADDRESS=0.0.0.0:8080 \
+BACKEND_SERVICE_URL=https://www.example.test/example-backend/ \
+RESOURCE_SERVICE_URL=https://www.example.test/example-resource/ \
+LISTEN_ADDRESS=0.0.0.0:80 \
   example-frontend
 ```
 
@@ -95,15 +95,51 @@ docker run \
   --rm \
   --name example-frontend \
   -e CLIENT_ID=some-name \
-  -e CLIENT_SECRET=somesecret123 \
-  -e PROVIDER_URL=https://some.provider/url \
-  -e REDIRECT_CALLBACK_URL=https://your.callback/url \
+  -e CLIENT_SECRET=secret_as_set_in_idp \
+  -e PROVIDER_URL=https://your_idp_url/realms/golang-oidc \
+  -e REDIRECT_CALLBACK_URL=https://your_frontend_url/auth/oidc/callback \
   -e REDIRECT_LOGIN_URL=https://your.login/url \
-  -e BACKEND_SERVICE_URL=https://some.service/url \
-  -e RESOURCE_SERVICE_URL=https://some.other.service/url \
-  -e LISTEN_ADDRESS=0.0.0.0:8080 \
-  --publish 8080:8080 \
+  -e BACKEND_SERVICE_URL=https://www.example.test/example-backend/ \
+  -e RESOURCE_SERVICE_URL=https://www.example.test/example-resource/ \
+  -e LISTEN_ADDRESS=0.0.0.0:80 \
+  --publish 8080:80 \
   example-frontend
+```
+
+## Start using Compose
+
+Create a file `clientSecret.txt` containing the secret of the
+`example-frontend` client in your provider.
+
+Create a file `docker-compose.yml`:
+
+```yaml
+services:
+   example-frontend:
+     image: example-frontend:latest
+     ports:
+       - "8080:80"
+     environment:
+       WORDPRESS_DB_PASSWORD_FILE: /run/secrets/db_password
+       CLIENT_ID: some-name
+       PROVIDER_URL: https://your_idp_url/realms/golang-oidc
+       REDIRECT_CALLBACK_URL: https://your_frontend_url/auth/oidc/callback
+       REDIRECT_LOGIN_URL: https://your.login/url
+       BACKEND_SERVICE_URL: https://www.example.test/example-backend/
+       RESOURCE_SERVICE_URL: https://www.example.test/example-resource/
+       LISTEN_ADDRESS: 0.0.0.0:80
+     secrets:
+       - clientSecret
+
+secrets:
+   clientSecret:
+     file: clientSecret.txt
+```
+
+Run the service `example-frontend`:
+
+```shell
+docker compose -f docker-compose.yml up
 ```
 
 ## Author, Copyright and License
