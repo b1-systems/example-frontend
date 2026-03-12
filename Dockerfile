@@ -2,6 +2,7 @@ FROM golang:1.26 AS build-stage
 WORKDIR /app
 COPY example-frontend.go go.mod go.sum ./
 COPY ini /usr/local/go/src/example-frontend/ini
+COPY secret /usr/local/go/src/example-frontend/secret
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /example-frontend
 
