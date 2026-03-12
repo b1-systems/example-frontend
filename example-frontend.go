@@ -212,6 +212,7 @@ func main() {
 
           if err := idToken.Claims(&claims); err != nil {
             log.Printf("Unable to parse claims from ID token: %s", err)
+            log.Printf("ID token: %s", id_token)
             http.Error(w, "Bad request", http.StatusBadRequest)
           } else {
             w.Write([]byte(fmt.Sprintf("Client %s got access token: %s\r\n\r\n", clientID, access_token)))
