@@ -111,26 +111,29 @@ docker run \
 Create a file `clientSecret.txt` containing the secret of the
 `example-frontend` client in your provider.
 
+```shell
+printf "secret123" > ./clientSecret.txt
+```
+
 Create a file `docker-compose.yml`:
 
 ```yaml
 services:
    example-frontend:
      image: example-frontend:latest
+     build: .
      ports:
        - "8080:80"
      environment:
-       WORDPRESS_DB_PASSWORD_FILE: /run/secrets/db_password
-       CLIENT_ID: some-name
+       CLIENT_ID: example-frontend
        PROVIDER_URL: https://your_idp_url/realms/golang-oidc
-       REDIRECT_CALLBACK_URL: https://your_frontend_url/auth/oidc/callback
-       REDIRECT_LOGIN_URL: https://your.login/url
-       BACKEND_SERVICE_URL: https://www.example.test/example-backend/
-       RESOURCE_SERVICE_URL: https://www.example.test/example-resource/
+       REDIRECT_CALLBACK_URL: https://www.example.test/example-frontend/auth/oidc/callback
+       REDIRECT_LOGIN_URL: https://www.example.test/example-frontend
+       BACKEND_SERVICE_URL: https://www.example.test/example-backend
+       RESOURCE_SERVICE_URL: https://www.example.test/example-resource
        LISTEN_ADDRESS: 0.0.0.0:80
      secrets:
        - clientSecret
-
 secrets:
    clientSecret:
      file: clientSecret.txt
