@@ -84,3 +84,5 @@ func ReadIni(clientName string, arr []Ref) error {
 
   return nil
 }
+
+/* vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab: */

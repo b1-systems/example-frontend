@@ -126,7 +126,7 @@ func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseW
 
 func main() {
   arr := []ini.Ref{
-	{Name: "clientID", Value: &clientID},
+    {Name: "clientID", Value: &clientID},
     {Name: "clientSecret", Value: &clientSecret},
     {Name: "providerUrl", Value: &providerUrl},
     {Name: "redirectCallbackUrl", Value: &redirectCallbackUrl},
@@ -140,7 +140,7 @@ func main() {
   content, err := secret.ReadSecret("clientSecret")
 
   if err == nil {
-	  clientSecret = content
+      clientSecret = content
   }
 
   ctx := context.Background()
@@ -245,13 +245,13 @@ func main() {
 
             res , err := client.Do(req)
 
-	          if err != nil {
+            if err != nil {
               log.Printf("Web request to %s failed: %s (status: %d)", backendServiceUrl, err, res.StatusCode)
               w.Write([]byte("Making web request to " + backendServiceUrl + " failed."))
-	          } else {
+            } else {
               body, err := ioutil.ReadAll(res.Body)
 
-	            if err != nil {
+              if err != nil {
                 log.Printf("Reading result of web request to %s failed: %s (status: %d)", backendServiceUrl, err, res.StatusCode)
                 w.Write([]byte("Reading result of web request to " + backendServiceUrl + " failed."))
               } else {
@@ -268,25 +268,25 @@ func main() {
 
             res , err = client.Do(req)
 
-	          if err != nil {
-              log.Printf("Web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
-              w.Write([]byte("Making web request to " + resourceServiceUrl + " failed."))
-	          } else {
-              body, err := ioutil.ReadAll(res.Body)
-
-	            if err != nil {
-                log.Printf("Reading result of web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
-                w.Write([]byte("Reading result of web request to " + resourceServiceUrl + " failed."))
+              if err != nil {
+                log.Printf("Web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
+                w.Write([]byte("Making web request to " + resourceServiceUrl + " failed."))
               } else {
-                sb := string(body)
-                w.Write([]byte("Result of web request to " + resourceServiceUrl + ":\r\n" + sb))
+                body, err := ioutil.ReadAll(res.Body)
+
+                if err != nil {
+                  log.Printf("Reading result of web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
+                  w.Write([]byte("Reading result of web request to " + resourceServiceUrl + " failed."))
+                } else {
+                  sb := string(body)
+                  w.Write([]byte("Result of web request to " + resourceServiceUrl + ":\r\n" + sb))
+                }
               }
             }
           }
         }
       }
-    }
-  })
+    })
 
   http.HandleFunc("/auth/oidc/callback", func(w http.ResponseWriter, r *http.Request) {
     s := sess.Start(w, r)
@@ -296,57 +296,51 @@ func main() {
     if r.URL.Query().Get("state") != state {
       log.Printf("\"state\" did not match, possible clickjack attempt")
       http.Error(w, "Bad request", http.StatusBadRequest)
-      return
+    } else {
+      codeVerifier := s.GetString("codeVerifier")
+
+      if err != nil {
+        log.Printf("\"codeVerifier\" not set, possible clickjack attempt")
+        http.Error(w, "Bad request", http.StatusBadRequest)
+      } else {
+        oauth2Token, err := config.Exchange(
+          ctx,
+          r.URL.Query().Get("code"),
+          oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+
+        if err != nil {
+          log.Printf("Failed to exchange token: %s", err.Error())
+          http.Error(w, "Internal server error", http.StatusInternalServerError)
+        } else {
+          rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+
+          if !ok {
+            log.Printf("No id_token field in oauth2 token")
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+          } else {
+            idToken, err := idTokenVerifier.Verify(ctx, rawIDToken)
+
+            if err != nil {
+              log.Printf("Failed to verify ID Token: %s", err.Error())
+              http.Error(w, "Internal server error", http.StatusInternalServerError)
+            } else {
+              nonce := s.GetString("nonce")
+
+              if idToken.Nonce != nonce {
+                log.Printf("\"nonce\" did not match, possible clickjack attempt")
+                http.Error(w, "Bad request", http.StatusBadRequest)
+              } else {
+                s.Set("authenticated", true)
+                s.Set("access_token", oauth2Token.AccessToken);
+                s.Set("id_token", rawIDToken);
+
+                http.Redirect(w, r, redirectLoginUrl, http.StatusFound)
+              }
+            }
+          }
+        }
+      }
     }
-
-    codeVerifier := s.GetString("codeVerifier")
-
-    if err != nil {
-      log.Printf("\"codeVerifier\" not set, possible clickjack attempt")
-      http.Error(w, "Bad request", http.StatusBadRequest)
-      return
-    }
-
-    oauth2Token, err := config.Exchange(
-      ctx,
-      r.URL.Query().Get("code"),
-      oauth2.SetAuthURLParam("code_verifier", codeVerifier))
-
-    if err != nil {
-      log.Printf("Failed to exchange token: %s", err.Error())
-      http.Error(w, "Internal server error", http.StatusInternalServerError)
-      return
-    }
-
-    rawIDToken, ok := oauth2Token.Extra("id_token").(string)
-
-    if !ok {
-      log.Printf("No id_token field in oauth2 token")
-      http.Error(w, "Internal server error", http.StatusInternalServerError)
-      return
-    }
-
-    idToken, err := idTokenVerifier.Verify(ctx, rawIDToken)
-
-    if err != nil {
-      log.Printf("Failed to verify ID Token: %s", err.Error())
-      http.Error(w, "Internal server error", http.StatusInternalServerError)
-      return
-    }
-
-    nonce := s.GetString("nonce")
-
-    if idToken.Nonce != nonce {
-      log.Printf("\"nonce\" did not match, possible clickjack attempt")
-      http.Error(w, "Bad request", http.StatusBadRequest)
-      return
-    }
-
-    s.Set("authenticated", true)
-    s.Set("access_token", oauth2Token.AccessToken);
-    s.Set("id_token", rawIDToken);
-
-    http.Redirect(w, r, redirectLoginUrl, http.StatusFound)
   })
 
   http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -382,3 +376,5 @@ func main() {
   log.Printf("Listening on http://%s/", listenAddress)
   log.Fatal(http.ListenAndServe(listenAddress, nil))
 }
+
+/* vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab: */
