@@ -62,6 +62,24 @@ resourceServiceUrl = https://www.example.test/example-resource/
 listenAddress = 0.0.0.0:80
 ```
 
+### Environemnt Variables
+
+All configuration options can also be set using environment variables as show below.
+Note that setting an environment variable overrides the corresponding value in the
+configuration file.
+
+```
+CLIENT_ID=some-name \
+CLIENT_SECRET=somesecret123 \
+PROVIDER_URL=https://some.provider/url \
+REDIRECT_CALLBACK_URL=https://your.callback/url \
+REDIRECT_LOGIN_URL=https://your.login/url \
+BACKEND_SERVICE_URL=https://some.service/url \
+RESOURCE_SERVICE_URL=https://some.other.service/url \
+LISTEN_ADDRESS=0.0.0.0:8080 \
+  example-frontend
+```
+
 # Start
 
 ```bash
@@ -69,8 +87,27 @@ systemctl start example-frontend.service
 journalctl -xefu  example-frontend.service
 ```
 
+## Start using Docker
+
+```shell
+docker build --tag example-frontend .
+docker run \
+  --rm \
+  --name example-frontend \
+  -e CLIENT_ID=some-name \
+  -e CLIENT_SECRET=somesecret123 \
+  -e PROVIDER_URL=https://some.provider/url \
+  -e REDIRECT_CALLBACK_URL=https://your.callback/url \
+  -e REDIRECT_LOGIN_URL=https://your.login/url \
+  -e BACKEND_SERVICE_URL=https://some.service/url \
+  -e RESOURCE_SERVICE_URL=https://some.other.service/url \
+  -e LISTEN_ADDRESS=0.0.0.0:8080 \
+  --publish 8080:8080 \
+  example-frontend
+```
+
 ## Author, Copyright and License
 
-* Copyright: 2022 B1 Systems GmbH <info@b1-systems.de>
+* Copyright: 2022-2026 B1 Systems GmbH <info@b1-systems.de>
 * Author: Tilman Kranz <tilman.kranz@b1-systems.de>
 * License: MIT License <https://opensource.org/licenses/MIT>
