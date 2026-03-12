@@ -280,6 +280,7 @@ func main() {
                 } else {
                   sb := string(body)
                   w.Write([]byte("Result of web request to " + resourceServiceUrl + ":\r\n" + sb))
+                  log.Printf("Processed web request for /")
                 }
               }
             }
@@ -335,6 +336,8 @@ func main() {
                 s.Set("id_token", rawIDToken);
 
                 http.Redirect(w, r, redirectLoginUrl, http.StatusFound)
+
+                log.Printf("Processed web request for /auth/oidc/callback")
               }
             }
           }
