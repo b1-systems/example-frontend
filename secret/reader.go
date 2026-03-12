@@ -8,6 +8,7 @@ package secret
 
 import (
   "fmt"
+  "log"
   "os"
   "strings"
   "path/filepath"
@@ -19,6 +20,7 @@ func ReadSecret(secretName string) (string, error) {
 
   if err == nil {
     secretValue := strings.TrimSuffix(string(content), "\n")
+    log.Printf("Acquired value for secret %s from file %s", secretName, secretPath)
     return secretValue, nil
   } else {
     return "", fmt.Errorf("failed to read secret file %s: %v", secretPath, err)
