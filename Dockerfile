@@ -11,6 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /example-frontend
 
 FROM scratch AS release-stage
 COPY --from=build-stage /example-frontend /example-frontend
+COPY --from=build-stage /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY example-frontend.ini.sample /example-frontend.ini
 ENTRYPOINT ["/example-frontend"]
 ENV CLIENT_ID=example-frontend
