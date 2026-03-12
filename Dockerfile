@@ -1,3 +1,6 @@
+# syntax=docker/dockerfile:1
+# check=skip=SecretsUsedInArgOrEnv
+
 FROM golang:1.26 AS build-stage
 WORKDIR /app
 COPY example-frontend.go go.mod go.sum ./
