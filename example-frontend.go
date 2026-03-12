@@ -140,7 +140,6 @@ func main() {
   content, err := secret.ReadSecret("clientSecret")
 
   if err == nil {
-    log.Printf("Set clientSecret to %s", content)
     clientSecret = content
   }
 

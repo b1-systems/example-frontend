@@ -8,8 +8,8 @@ package secret
 
 import (
   "fmt"
-  "log"
   "os"
+  "strings"
   "path/filepath"
 )
 
@@ -18,12 +18,11 @@ func ReadSecret(secretName string) (string, error) {
   content, err := os.ReadFile(secretPath)
 
   if err == nil {
-    log.Printf("Read secret %s from path %s: %s", secretName, secretPath, content)
+    secretValue := strings.TrimSuffix(string(content), "\n")
+    return secretValue, nil
   } else {
     return "", fmt.Errorf("failed to read secret file %s: %v", secretPath, err)
   }
-
-  return string(content), nil
 }
 
 /* vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab: */
