@@ -46,17 +46,14 @@ clientSecret = secret_as_set_in_idp
 # This URL will be used for endpoint discovery of your IdP
 providerUrl = https://your_idp_url/realms/golang-oidc
 
-# The "example-frontend" server serves an URI "/auth/oidc/callback":
-redirectCallbackUrl = https://your_frontend_url/auth/oidc/callback
-
 # This should be the URL of the URI "/" of your "example-frontend" server:
-redirectLoginUrl = https://your_frontend_url/example-frontend/
+homeUrl = https://your_frontend_url/example-frontend/
 
 # See https://github.com/b1-systems/example-frontend
-backendServiceUrl = https://www.example.test/example-backend/
+backendUrl = https://www.example.test/example-backend/
 
 # See https://github.com/b1-systems/example-resource
-resourceServiceUrl = https://www.example.test/example-resource/
+resourceUrl = https://www.example.test/example-resource/
 
 # Plain HTTP service address of this "example-frontend" server:
 listenAddress = 0.0.0.0:80
@@ -72,10 +69,9 @@ configuration file.
 CLIENT_ID=some-name \
 CLIENT_SECRET=secret_as_set_in_idp \
 PROVIDER_URL=https://your_idp_url/realms/golang-oidc \
-REDIRECT_CALLBACK_URL=https://your_frontend_url/auth/oidc/callback \
-REDIRECT_LOGIN_URL=https://your.login/url \
-BACKEND_SERVICE_URL=https://www.example.test/example-backend/ \
-RESOURCE_SERVICE_URL=https://www.example.test/example-resource/ \
+HOME_URL=https://your.login/url \
+BACKEND_URL=https://www.example.test/example-backend/ \
+RESOURCE_URL=https://www.example.test/example-resource/ \
 LISTEN_ADDRESS=0.0.0.0:80 \
   example-frontend
 ```
@@ -97,10 +93,9 @@ docker run \
   -e CLIENT_ID=some-name \
   -e CLIENT_SECRET=secret_as_set_in_idp \
   -e PROVIDER_URL=https://your_idp_url/realms/golang-oidc \
-  -e REDIRECT_CALLBACK_URL=https://your_frontend_url/auth/oidc/callback \
-  -e REDIRECT_LOGIN_URL=https://your.login/url \
-  -e BACKEND_SERVICE_URL=https://www.example.test/example-backend/ \
-  -e RESOURCE_SERVICE_URL=https://www.example.test/example-resource/ \
+  -e HOME_URL=https://your.login/url \
+  -e BACKEND_URL=https://www.example.test/example-backend/ \
+  -e RESOURCE_URL=https://www.example.test/example-resource/ \
   -e LISTEN_ADDRESS=0.0.0.0:80 \
   --publish 8080:80 \
   example-frontend
@@ -127,10 +122,9 @@ services:
      environment:
        CLIENT_ID: example-frontend
        PROVIDER_URL: https://your_idp_url/realms/golang-oidc
-       REDIRECT_CALLBACK_URL: https://www.example.test/example-frontend/auth/oidc/callback
-       REDIRECT_LOGIN_URL: https://www.example.test/example-frontend
-       BACKEND_SERVICE_URL: https://www.example.test/example-backend
-       RESOURCE_SERVICE_URL: https://www.example.test/example-resource
+       HOME_URL: https://www.example.test/example-frontend
+       BACKEND_URL: https://www.example.test/example-backend
+       RESOURCE_URL: https://www.example.test/example-resource
        LISTEN_ADDRESS: 0.0.0.0:80
      secrets:
        - clientSecret
