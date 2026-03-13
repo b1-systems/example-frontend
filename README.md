@@ -59,7 +59,7 @@ backendServiceUrl = https://www.example.test/example-backend/
 resourceServiceUrl = https://www.example.test/example-resource/
 
 # Plain HTTP service address of this "example-frontend" server:
-listenAddress = 0.0.0.0:80
+listenAddress = 0.0.0.0:8080
 ```
 
 ### Environment Variables
@@ -76,7 +76,7 @@ REDIRECT_CALLBACK_URL=https://your_frontend_url/auth/oidc/callback \
 REDIRECT_LOGIN_URL=https://your.login/url \
 BACKEND_SERVICE_URL=https://www.example.test/example-backend/ \
 RESOURCE_SERVICE_URL=https://www.example.test/example-resource/ \
-LISTEN_ADDRESS=0.0.0.0:80 \
+LISTEN_ADDRESS=0.0.0.0:8080 \
   example-frontend
 ```
 
@@ -97,12 +97,12 @@ docker run \
   -e CLIENT_ID=some-name \
   -e CLIENT_SECRET=secret_as_set_in_idp \
   -e PROVIDER_URL=https://your_idp_url/realms/golang-oidc \
-  -e REDIRECT_CALLBACK_URL=https://your_frontend_url/auth/oidc/callback \
-  -e REDIRECT_LOGIN_URL=https://your.login/url \
+  -e REDIRECT_CALLBACK_URL=https://www.example.test/example-frontend/auth/oidc/callback \
+  -e REDIRECT_LOGIN_URL=https://www.example.test/example-frontend \
   -e BACKEND_SERVICE_URL=https://www.example.test/example-backend/ \
   -e RESOURCE_SERVICE_URL=https://www.example.test/example-resource/ \
-  -e LISTEN_ADDRESS=0.0.0.0:80 \
-  --publish 8080:80 \
+  -e LISTEN_ADDRESS=0.0.0.0:8080 \
+  --publish 8080:8080 \
   example-frontend
 ```
 
@@ -123,7 +123,7 @@ services:
      image: example-frontend:latest
      build: .
      ports:
-       - "8080:80"
+       - "8080:8080"
      environment:
        CLIENT_ID: example-frontend
        PROVIDER_URL: https://your_idp_url/realms/golang-oidc
@@ -131,7 +131,7 @@ services:
        REDIRECT_LOGIN_URL: https://www.example.test/example-frontend
        BACKEND_SERVICE_URL: https://www.example.test/example-backend
        RESOURCE_SERVICE_URL: https://www.example.test/example-resource
-       LISTEN_ADDRESS: 0.0.0.0:80
+       LISTEN_ADDRESS: 0.0.0.0:8080
      secrets:
        - clientSecret
 secrets:
