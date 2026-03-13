@@ -24,19 +24,31 @@ import (
   "crypto/sha256"
   "encoding/base64"
   "fmt"
+  "html/template"
   "io"
   "io/ioutil"
   "log"
   "net/http"
   "os"
   "time"
-  "github.com/coreos/go-oidc/v3/oidc"
   "github.com/kataras/go-sessions/v3"
+  "github.com/coreos/go-oidc/v3/oidc"
+  "github.com/creasty/defaults"
   "golang.org/x/net/context"
   "golang.org/x/oauth2"
   "example-frontend/ini"
   "example-frontend/secret"
 )
+
+type PageData struct{
+  Title string `default:"example-frontend"`
+  User string `default:""`
+  AccessToken string `default:""`
+  IDToken string `default:""`
+  Claims string `default:""`
+  ExampleBackend string `default:""`
+  ExampleResource string `default:""`
+}
 
 var (
   clientName = "example-frontend"
@@ -84,7 +96,7 @@ func ComputePkceChallenge(verifier string) string {
   return (challenge)
 }
 
-func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseWriter, r *http.Request) {
+func redirectToLogin(config oauth2.Config, currentSession *sessions.Session, w http.ResponseWriter, r *http.Request) {
   state, err := randString(16)
 
   if err != nil {
@@ -107,9 +119,9 @@ func redirectToLogin(config oauth2.Config, s *sessions.Session, w http.ResponseW
 
       codeChallenge := ComputePkceChallenge(codeVerifier)
 
-      s.Set("state", state)
-      s.Set("nonce", nonce)
-      s.Set("codeVerifier", codeVerifier)
+      currentSession.Set("state", state)
+      currentSession.Set("nonce", nonce)
+      currentSession.Set("codeVerifier", codeVerifier)
 
       url := config.AuthCodeURL(
         state,
@@ -180,28 +192,35 @@ func main() {
   })
 
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-    s := sess.Start(w, r)
+    currentSession := sess.Start(w, r)
 
-    if auth, _ := s.GetBoolean("authenticated"); !auth {
-      redirectToLogin(config, s, w, r);
+    if auth, _ := currentSession.GetBoolean("authenticated"); !auth {
+      redirectToLogin(config, currentSession, w, r);
     } else {
-      access_token := s.GetString("access_token")
+      access_token := currentSession.GetString("access_token")
 
-      id_token := s.GetString("id_token")
+      id_token := currentSession.GetString("id_token")
       idToken, err := idTokenVerifier.Verify(ctx, id_token)
 
       if err != nil {
-        s.Set("authenticated", false)
+        currentSession.Set("authenticated", false)
         log.Printf("Unable to verify ID token: %s; redirecting user agent to login", err)
-        redirectToLogin(config, s, w, r);
+        redirectToLogin(config, currentSession, w, r);
       } else {
+        pageData := PageData{}
+        defaults.Set(&pageData)
+
+        pageData.IDToken = id_token
+
         err = idToken.VerifyAccessToken(access_token)
 
         if err != nil {
-          s.Set("authenticated", false)
+          currentSession.Set("authenticated", false)
           log.Printf("Unable to verify access token: %s; redirecting user agent to login", err)
           http.Error(w, "Bad request", http.StatusBadRequest)
         } else {
+          pageData.AccessToken = access_token
+
           var claims struct {
             Sid string `json:"sid"`
             Expires int64 `json:"exp"`
@@ -215,25 +234,20 @@ func main() {
             log.Printf("ID token: %s", id_token)
             http.Error(w, "Bad request", http.StatusBadRequest)
           } else {
-            w.Write([]byte(fmt.Sprintf("Client %s got access token: %s\r\n\r\n", clientID, access_token)))
-            w.Write([]byte(fmt.Sprintf("Client %s got ID token: %s\r\n\r\n", clientID, id_token)))
-            w.Write([]byte(fmt.Sprintf(
-              "--------%s--------\r\n" +
-              "Parsed claims (from ID token):\r\n" +
-              " * sid = %s\r\n" +
-              " * exp = %s\r\n" +
-              " * aud = %s\r\n" +
-              " * email = %s\r\n" +
-              " * email_verified = %t\r\n\r\n",
-              clientID,
+            pageData.Claims = fmt.Sprintf(
+              "sid = %s\r\n" +
+              "exp = %s\r\n" +
+              "aud = %s\r\n" +
+              "email = %s\r\n" +
+              "email_verified = %t\r\n\r\n",
               claims.Sid,
               time.Unix(claims.Expires, 0).UTC(),
               claims.Audience,
               claims.Email,
-              claims.Verified)))
+              claims.Verified)
 
             // Remember OIDC session ID -> Kataras session ID
-            oidc_sid_to_session[claims.Sid] = s.ID()
+            oidc_sid_to_session[claims.Sid] = currentSession.ID()
 
             req, err := http.NewRequest("GET", backendServiceUrl, nil)
 
@@ -247,16 +261,16 @@ func main() {
 
             if err != nil {
               log.Printf("Web request to %s failed: %s (status: %d)", backendServiceUrl, err, res.StatusCode)
-              w.Write([]byte("Making web request to " + backendServiceUrl + " failed."))
+              pageData.ExampleBackend = "Making web request to " + backendServiceUrl + " failed."
             } else {
               body, err := ioutil.ReadAll(res.Body)
 
               if err != nil {
                 log.Printf("Reading result of web request to %s failed: %s (status: %d)", backendServiceUrl, err, res.StatusCode)
-                w.Write([]byte("Reading result of web request to " + backendServiceUrl + " failed."))
+                pageData.ExampleBackend = "Reading result of web request to " + backendServiceUrl + " failed."
               } else {
                 sb := string(body)
-                w.Write([]byte("Result of web request to " + backendServiceUrl + ":\r\n" + sb + "\r\n"))
+                pageData.ExampleBackend = sb
               }
             }
 
@@ -270,35 +284,38 @@ func main() {
 
               if err != nil {
                 log.Printf("Web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
-                w.Write([]byte("Making web request to " + resourceServiceUrl + " failed."))
+                pageData.ExampleResource = "Making web request to " + resourceServiceUrl + " failed."
               } else {
                 body, err := ioutil.ReadAll(res.Body)
 
                 if err != nil {
                   log.Printf("Reading result of web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
-                  w.Write([]byte("Reading result of web request to " + resourceServiceUrl + " failed."))
+                  pageData.ExampleResource = "Reading result of web request to " + resourceServiceUrl + " failed."
                 } else {
                   sb := string(body)
-                  w.Write([]byte("Result of web request to " + resourceServiceUrl + ":\r\n" + sb))
+                  pageData.ExampleResource = sb
                   log.Printf("Processed web request for /")
                 }
               }
             }
           }
+
+          tpl := template.Must(template.ParseFiles("views/index.html"))
+          _ = tpl.Execute(w, pageData)
         }
       }
     })
 
   http.HandleFunc("/auth/oidc/callback", func(w http.ResponseWriter, r *http.Request) {
-    s := sess.Start(w, r)
+    currentSession := sess.Start(w, r)
 
-    state := s.GetString("state")
+    state := currentSession.GetString("state")
 
     if r.URL.Query().Get("state") != state {
       log.Printf("\"state\" did not match, possible clickjack attempt")
       http.Error(w, "Bad request", http.StatusBadRequest)
     } else {
-      codeVerifier := s.GetString("codeVerifier")
+      codeVerifier := currentSession.GetString("codeVerifier")
 
       if err != nil {
         log.Printf("\"codeVerifier\" not set, possible clickjack attempt")
@@ -325,15 +342,15 @@ func main() {
               log.Printf("Failed to verify ID Token: %s", err.Error())
               http.Error(w, "Internal server error", http.StatusInternalServerError)
             } else {
-              nonce := s.GetString("nonce")
+              nonce := currentSession.GetString("nonce")
 
               if idToken.Nonce != nonce {
                 log.Printf("\"nonce\" did not match, possible clickjack attempt")
                 http.Error(w, "Bad request", http.StatusBadRequest)
               } else {
-                s.Set("authenticated", true)
-                s.Set("access_token", oauth2Token.AccessToken);
-                s.Set("id_token", rawIDToken);
+                currentSession.Set("authenticated", true)
+                currentSession.Set("access_token", oauth2Token.AccessToken);
+                currentSession.Set("id_token", rawIDToken);
 
                 http.Redirect(w, r, redirectLoginUrl, http.StatusFound)
 

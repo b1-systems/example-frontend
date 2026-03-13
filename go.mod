@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/coreos/go-oidc/v3 v3.4.0
+	github.com/creasty/defaults v1.8.0
 	github.com/kataras/go-sessions/v3 v3.3.1
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1
