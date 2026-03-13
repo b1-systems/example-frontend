@@ -55,10 +55,9 @@ var (
   clientID = ""
   clientSecret = ""
   providerUrl = ""
-  redirectCallbackUrl = ""
-  redirectLoginUrl = ""
-  backendServiceUrl = ""
-  resourceServiceUrl = ""
+  homeUrl = ""
+  backendUrl = ""
+  resourceUrl = ""
   listenAddress = ""
 )
 
@@ -141,10 +140,9 @@ func main() {
     {Name: "clientID", Value: &clientID},
     {Name: "clientSecret", Value: &clientSecret},
     {Name: "providerUrl", Value: &providerUrl},
-    {Name: "redirectCallbackUrl", Value: &redirectCallbackUrl},
-    {Name: "redirectLoginUrl", Value: &redirectLoginUrl},
-    {Name: "backendServiceUrl", Value: &backendServiceUrl},
-    {Name: "resourceServiceUrl", Value: &resourceServiceUrl},
+    {Name: "homeUrl", Value: &homeUrl},
+    {Name: "backendUrl", Value: &backendUrl},
+    {Name: "resourceUrl", Value: &resourceUrl},
     {Name: "listenAddress", Value: &listenAddress}}
 
   ini.ReadIni(clientName, arr)
@@ -182,7 +180,7 @@ func main() {
     ClientID: clientID,
     ClientSecret: clientSecret,
     Endpoint: provider.Endpoint(),
-    RedirectURL: redirectCallbackUrl,
+    RedirectURL: homeUrl + "/auth/oidc/callback",
     Scopes: []string{oidc.ScopeOpenID, "profile", "email", "roles"},
   }
 
@@ -254,7 +252,7 @@ func main() {
             // Remember OIDC session ID -> Kataras session ID
             oidc_sid_to_session[claims.Sid] = currentSession.ID()
 
-            req, err := http.NewRequest("GET", backendServiceUrl, nil)
+            req, err := http.NewRequest("GET", backendUrl, nil)
 
             req.Header = http.Header{
               "Authorization": {"Bearer " + id_token},
@@ -265,21 +263,21 @@ func main() {
             res , err := client.Do(req)
 
             if err != nil {
-              log.Printf("Web request to %s failed: %s (status: %d)", backendServiceUrl, err, res.StatusCode)
-              pageData.ExampleBackend = "Making web request to " + backendServiceUrl + " failed."
+              log.Printf("Web request to %s failed: %s (status: %d)", backendUrl, err, res.StatusCode)
+              pageData.ExampleBackend = "Making web request to " + backendUrl + " failed."
             } else {
               body, err := ioutil.ReadAll(res.Body)
 
               if err != nil {
-                log.Printf("Reading result of web request to %s failed: %s (status: %d)", backendServiceUrl, err, res.StatusCode)
-                pageData.ExampleBackend = "Reading result of web request to " + backendServiceUrl + " failed."
+                log.Printf("Reading result of web request to %s failed: %s (status: %d)", backendUrl, err, res.StatusCode)
+                pageData.ExampleBackend = "Reading result of web request to " + backendUrl + " failed."
               } else {
                 sb := string(body)
                 pageData.ExampleBackend = sb
               }
             }
 
-            req, err = http.NewRequest("GET", resourceServiceUrl, nil)
+            req, err = http.NewRequest("GET", resourceUrl, nil)
 
             req.Header = http.Header{
               "Authorization": {"Bearer " + access_token},
@@ -288,14 +286,14 @@ func main() {
             res , err = client.Do(req)
 
               if err != nil {
-                log.Printf("Web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
-                pageData.ExampleResource = "Making web request to " + resourceServiceUrl + " failed."
+                log.Printf("Web request to %s failed: %s (status: %d)", resourceUrl, err, res.StatusCode)
+                pageData.ExampleResource = "Making web request to " + resourceUrl + " failed."
               } else {
                 body, err := ioutil.ReadAll(res.Body)
 
                 if err != nil {
-                  log.Printf("Reading result of web request to %s failed: %s (status: %d)", resourceServiceUrl, err, res.StatusCode)
-                  pageData.ExampleResource = "Reading result of web request to " + resourceServiceUrl + " failed."
+                  log.Printf("Reading result of web request to %s failed: %s (status: %d)", resourceUrl, err, res.StatusCode)
+                  pageData.ExampleResource = "Reading result of web request to " + resourceUrl + " failed."
                 } else {
                   sb := string(body)
                   pageData.ExampleResource = sb
@@ -357,7 +355,7 @@ func main() {
                 currentSession.Set("access_token", oauth2Token.AccessToken);
                 currentSession.Set("id_token", rawIDToken);
 
-                http.Redirect(w, r, redirectLoginUrl, http.StatusFound)
+                http.Redirect(w, r, homeUrl, http.StatusFound)
 
                 log.Printf("Processed web request for /auth/oidc/callback")
               }
