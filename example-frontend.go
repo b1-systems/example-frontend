@@ -225,6 +225,7 @@ func main() {
             Sid string `json:"sid"`
             Expires int64 `json:"exp"`
             Audience []string `json:"aud"`
+            PreferredUsername string `json:"preferred_username"`
             Email string `json:"email"`
             Verified bool `json:"email_verified"`
           }
@@ -238,13 +239,17 @@ func main() {
               "sid = %s\r\n" +
               "exp = %s\r\n" +
               "aud = %s\r\n" +
+              "preferred_username = %s\r\n" +
               "email = %s\r\n" +
               "email_verified = %t\r\n\r\n",
               claims.Sid,
               time.Unix(claims.Expires, 0).UTC(),
               claims.Audience,
+              claims.PreferredUsername,
               claims.Email,
               claims.Verified)
+
+            pageData.User = claims.PreferredUsername
 
             // Remember OIDC session ID -> Kataras session ID
             oidc_sid_to_session[claims.Sid] = currentSession.ID()
