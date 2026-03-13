@@ -13,6 +13,7 @@ FROM scratch AS release-stage
 COPY --from=build-stage /example-frontend /example-frontend
 COPY --from=build-stage /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY example-frontend.ini.sample /example-frontend.ini
+COPY views/index.html /views/index.html
 ENTRYPOINT ["/example-frontend"]
 ENV CLIENT_ID=example-frontend
 ENV CLIENT_SECRET=
